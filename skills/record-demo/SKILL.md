@@ -5,145 +5,161 @@ description: Use when the user wants to create a screen recording of a web app w
 
 # Record Demo
 
-Automated browser demo recorder. Discusses steps with user, generates a steps JSON, previews for confirmation, then records an MP4 via Playwright.
+Automated browser demo recorder. You discuss what to record with the user, generate a steps JSON, then hand off to a Sonnet subagent that runs Playwright to capture an MP4.
 
-## Setup (First Time)
+## Before Anything Else: Check Setup
 
-Find the plugin install directory and install dependencies:
+On first use (or if unsure), verify the environment is ready. Run these checks:
 
 ```bash
-PLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name "demo.mjs" -path "*/record-demo*" -exec dirname {} \; | head -1)
-cd "$PLUGIN_DIR" && npm install
+# 1. Find the plugin engine
+PLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name "demo.mjs" -path "*record-demo*" -exec dirname {} \; | head -1)
+echo "Plugin dir: $PLUGIN_DIR"
+
+# 2. Check if node_modules exist
+ls "$PLUGIN_DIR/node_modules/.package-lock.json" 2>/dev/null && echo "Dependencies: OK" || echo "Dependencies: MISSING"
+
+# 3. Check if Playwright browser is installed
+npx playwright install --dry-run chromium 2>&1 | head -3
 ```
 
-The plugin directory contains:
-- `demo.mjs` — the recording engine
-- `inspect-page.mjs` — page inspection utility
+If dependencies are missing, run:
+```bash
+cd "$PLUGIN_DIR" && npm install && npx playwright install chromium
+```
 
-Recordings and steps files are saved to the **current working directory** by default.
+Tell the user what's happening: "Installing the recording engine dependencies — this is a one-time setup."
 
 ## Workflow
-
-```dot
-digraph flow {
-  "User describes what to record" -> "Discuss & clarify steps";
-  "Discuss & clarify steps" -> "Generate steps JSON";
-  "Generate steps JSON" -> "Run demo.mjs (shows preview)";
-  "Run demo.mjs (shows preview)" -> "User confirms or skips steps";
-  "User confirms or skips steps" -> "Recording runs";
-  "Recording runs" -> "Review video with user";
-  "Review video with user" -> "Discuss & clarify steps" [label="fix needed"];
-  "Review video with user" -> "Done" [label="looks good"];
-}
-```
 
 ### Step 1: Understand what to record
 
 Ask the user:
-- What URL/page to record (local file, localhost, or external)
-- What interactions to show (click tabs, open modals, scroll, etc.)
-- How fast it should move (default: brisk)
-- Output filename
+- **What URL/page?** (local file, localhost dev server, or external URL)
+- **What interactions?** (click buttons, fill forms, scroll, switch tabs, etc.)
+- **How fast?** (default: brisk pacing)
+- **Output filename?** (default: `demo.mp4`)
+- **Viewport size?** (default: 1920x1200 — use 1440x900 for standard demos, 844x390 for mobile/game prototypes)
+
+If recording a localhost URL, confirm the dev server is running first. If it's not, help the user start it.
+
+If recording a page that requires login, tell the user:
+> "The browser needs to be logged in first. I'll open a setup session — log in manually, then close the browser to save the session."
+Then run without `--no-setup` so the user can configure the browser profile.
 
 ### Step 2: Generate steps JSON
 
-Write a `<name>-steps.json` file in the current working directory. Each step is an object with an `action` field.
+Write a `<name>-steps.json` file in the **user's current working directory** (not the plugin directory). Each step is an object:
 
-### Step 3: Run the recording
+```json
+{ "action": "click", "selector": "#my-button", "note": "Click Submit", "pauseAfter": 1000 }
+```
 
-**Always use a Sonnet subagent** to run the recording — it handles the task well and costs ~80x less than Opus. Spawn the recording via the Agent tool with `model: "sonnet"`:
+**How to find selectors:**
+- Ask the user for element IDs or data attributes if they know them
+- If the user shares HTML or a URL, inspect the DOM to find stable selectors
+- Use `inspect-page.mjs` to scan a page for clickable elements:
+  ```bash
+  node "$PLUGIN_DIR/inspect-page.mjs" "http://localhost:3000"
+  ```
+
+**Selector priority (most to least reliable):**
+1. IDs: `#start-btn`
+2. Data attributes: `[data-testid='save']`, `[data-panel='inbox']`
+3. Role selectors: `role=button[name="Save"]`
+4. Text selectors: `text=Submit`
+5. CSS classes: `.btn-primary` (least stable)
+
+### Step 3: Preview steps with user
+
+Before recording, show the user a numbered list of all steps with their notes and timing. Ask if they want to adjust anything. Example:
+
+```
+1. Open app (navigate to localhost:3000)
+2. Wait 1s
+3. Click Login (1s pause)
+4. Type email (0.5s pause)
+5. Submit form (2s pause)
+...
+```
+
+### Step 4: Run the recording
+
+**Always use a Sonnet subagent** — it costs ~80x less than Opus and handles this perfectly.
+
+First, resolve the plugin directory and steps file path, then spawn:
 
 ```
 Agent({
   model: "sonnet",
-  prompt: "Find the record-demo plugin directory and run the recording:\n\nPLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name 'demo.mjs' -path '*record-demo*' -exec dirname {} \\; | head -1)\nnode \"$PLUGIN_DIR/demo.mjs\" --steps <name>-steps.json --output <name>.mp4 --no-setup\n\nDo NOT modify any files. Just run the command and report success/failure.",
+  prompt: "Run this demo recording. Steps:\n\n1. Find the plugin engine:\nPLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name 'demo.mjs' -path '*record-demo*' -exec dirname {} \\; | head -1)\n\n2. Run the recording:\nnode \"$PLUGIN_DIR/demo.mjs\" --steps /absolute/path/to/<name>-steps.json --output /absolute/path/to/<name>.mp4 --no-setup --no-confirm\n\nIMPORTANT: Use absolute paths for both --steps and --output. Do NOT modify any files. Report success/failure and the output file path.",
   description: "Record demo"
 })
 ```
 
-The agent shows a step preview and prompts for confirmation before recording. Add `--no-confirm` to skip the preview.
+**Critical flags:**
+- `--no-setup` — skip browser profile wizard (use only after first-time login is done)
+- `--no-confirm` — skip interactive preview (required for subagent since it can't respond to prompts)
+- `--width` / `--height` — viewport size (pass if non-default)
 
-First-time setup (login, preferences) — run without `--no-setup` so the user can configure the browser profile manually.
+### Step 5: Review and iterate
 
-## Recording Local Files
-
-**Standalone HTML prototypes:** Navigate directly to the file path.
-```json
-{ "action": "navigate", "url": "file:///Users/you/project/index.html" }
-```
-
-**Dev servers:** Make sure the server is running first, then use the localhost URL.
-```json
-{ "action": "navigate", "url": "http://localhost:3000/page" }
-```
-
-## Viewport & Resolution
-
-The engine supports `--width` and `--height` flags (defaults: 1920x1200).
-
-For standard demos, use 1440x900:
-```bash
-node "$PLUGIN_DIR/demo.mjs" --steps my-steps.json --output demo.mp4 --no-setup --width 1440 --height 900
-```
+After recording:
+- Tell the user where the MP4 is saved
+- Ask if they want to review it
+- If steps need fixing (wrong selector, bad timing, missing interaction), update the steps JSON and re-record
 
 ## Available Actions
 
 | Action | Key Fields | What it does |
 |--------|-----------|--------------|
-| `navigate` | `url` (or `"back"`) | Go to URL or back |
+| `navigate` | `url` (or `"back"`) | Go to URL or browser back |
 | `click` | `selector` | Click element via Playwright selector |
-| `click-js` | `text` | Find text in DOM, walk up to clickable ancestor, click |
-| `click-link` | `selector` | Click link, handle new tab open/close |
-| `scroll` | `amount`, `duration` | Smooth scroll down by pixels |
-| `scroll-top` | — | Smooth scroll to top |
-| `type` | `selector`, `text` | Click element and type text |
-| `press` | `key` | Press keyboard key (e.g. `Escape`) |
+| `click-js` | `text` | Find visible text, walk up DOM to clickable ancestor, click |
+| `click-link` | `selector` | Click link that opens new tab, auto-close tab after |
+| `scroll` | `amount`, `duration` | Smooth scroll by pixels (positive = down) |
+| `scroll-top` | — | Smooth scroll back to top |
+| `type` | `selector`, `text` | Click element then type text character by character |
+| `press` | `key` | Press keyboard key (e.g. `Escape`, `Enter`) |
 | `hover` | `selector` | Hover over element |
-| `wait` | `seconds` | Pause |
+| `wait` | `seconds` | Pause recording |
 
-All actions support `note` (label shown in logs/preview) and `pauseAfter` (ms delay after action).
-
-## Selector Tips
-
-- **IDs and data attributes first:** `#start-btn`, `[data-panel='spring-collection']`, `[data-testid='save-button']`
-- **Role-based selectors for React:** `role=button[name="Save"]`, `role=link[name="Manage Packages"]`
-- **Text selectors for visible labels:** `text=Submit`, `text=Cancel`
-- **Class selectors as fallback:** `.bg-red-500`, `.flex.items-center`
-- Prefer `click` with CSS selectors over `click-js` when IDs or data attributes are available
-- Use `click-js` when the text is visible but there's no stable selector
+Every action supports:
+- `note` — label shown in logs and preview (always include for readability)
+- `pauseAfter` — milliseconds to wait after the action completes
 
 ## Pacing Guidelines
 
-For a brisk demo:
-- `pauseAfter`: 500-800ms for scrolls, 1000-1500ms for tab clicks, 2000-3000ms for important views
+For a brisk, watchable demo:
+- `pauseAfter`: 500-800ms after scrolls, 1000-1500ms after clicks, 2000-3000ms for important views
 - `scroll duration`: 1000-1200ms
 - `wait`: 1-2s max
 
+Avoid long pauses — the viewer should never feel like nothing is happening.
+
 ## Error Handling
 
-The agent logs warnings with timestamps when selectors aren't found:
+When a selector isn't found, the engine retries for 10 seconds with warnings:
 ```
-⏳ 3s — still looking for: "selector" (step note)
+⏳ 3s — still looking for: "#missing-btn" (Click submit)
 ```
-After 10s timeout, saves a debug screenshot to `debug-<timestamp>.png`. Review the screenshot to fix selectors.
+
+After timeout, it saves a debug screenshot to the output directory as `debug-<timestamp>.png`. If a recording fails:
+
+1. Check the debug screenshot to see what the page actually looks like
+2. Common causes: wrong selector, element not visible yet (add a `wait` before it), page didn't load (add `pauseAfter` to the previous navigate step)
+3. Fix the steps JSON and re-record
+
+Clean up debug screenshots after a successful recording:
+```bash
+rm debug-*.png
+```
 
 ## Common Mistakes
 
-- Using `text=Submit` when "Submit" appears multiple times — add more context: `button:has-text('Submit')` or use a data attribute
-- Forgetting `pauseAfter` on fast actions — the recording will look rushed without pauses
-- Not running the dev server before recording a localhost URL
-- Using `click-js` when a stable CSS selector exists — `click` is more reliable
-
-## Example Steps JSON
-
-```json
-[
-  { "action": "navigate", "url": "http://localhost:3000", "note": "Open app" },
-  { "action": "wait", "seconds": 1 },
-  { "action": "click", "selector": "#login-btn", "note": "Click Login", "pauseAfter": 1000 },
-  { "action": "type", "selector": "#email", "text": "demo@example.com", "pauseAfter": 500 },
-  { "action": "click", "selector": "button[type='submit']", "note": "Submit form", "pauseAfter": 2000 },
-  { "action": "scroll", "amount": 300, "duration": 1000, "note": "Scroll down", "pauseAfter": 800 },
-  { "action": "wait", "seconds": 2, "note": "Show final state" }
-]
-```
+- **Forgetting `--no-confirm`** in the subagent prompt — the recording hangs waiting for keyboard input
+- **Using relative paths** in the subagent — the subagent's working directory may differ; always use absolute paths
+- **Missing `pauseAfter`** on fast actions — the recording looks rushed and viewers can't follow
+- **Not starting the dev server** before recording a localhost URL — navigate step fails or shows blank page
+- **Using `click-js` when a CSS selector exists** — `click` with `#id` or `[data-attr]` is faster and more reliable
+- **Duplicate text on page** — `text=Submit` matches the first one; use `button:has-text('Submit')` or a data attribute instead
