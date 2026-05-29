@@ -653,7 +653,7 @@ async function runDemo() {
     const setupBrowser = await chromium.launchPersistentContext(profileDir, {
       headless: false,
       viewport: { width, height },
-      args: [`--window-size=${width},${height}`],
+      args: [`--window-size=${width},${height}`, '--start-fullscreen'],
     });
 
     const setupPage = setupBrowser.pages()[0] || await setupBrowser.newPage();
@@ -679,7 +679,7 @@ async function runDemo() {
   const browser = await chromium.launchPersistentContext(profileDir, {
     headless: false,
     viewport: { width, height },
-    args: [`--window-size=${width},${height}`],
+    args: [`--window-size=${width},${height}`, '--start-fullscreen'],
     recordVideo: { dir: "./recordings", size: { width, height } },
   });
 
