@@ -5,7 +5,7 @@ Automated browser demo recorder for Claude Code. Tell Claude what you want to re
 ## Install
 
 ```
-/plugin add stickyamor/record-demo-plugin
+/plugin add <github-username>/record-demo-plugin
 ```
 
 Dependencies are installed automatically on first use. If you need to set up manually:
