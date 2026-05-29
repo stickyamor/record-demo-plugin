@@ -117,10 +117,11 @@ Agent({
 ### Step 6: Ask for feedback
 
 After the dry run completes, tell the user where the MP4 is saved and ask:
-> "Here's the test recording. Are you happy with it, or do you want to add/change any actions?"
+> "Here's the test recording. Are you happy with it, or do you want to add/change any actions? Want me to list the steps again to decide?"
 
 Wait for their response:
 - **If happy** → done, the recording is final
+- **If they want to see steps** → show the numbered step list again so they can pick what to change
 - **If they want changes** → update the steps JSON, re-record, and ask again
 
 ## Available Actions
