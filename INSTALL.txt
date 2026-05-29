@@ -14,9 +14,9 @@ REQUIREMENTS
 
 OPTION A: Install via GitHub (Recommended)
 ------------------------------------------
-Run this in Claude Code:
+If you have a GitHub repo URL for this plugin, run this in Claude Code:
 
-  /plugin add stickyamor/record-demo-plugin
+  /plugin add <github-username>/<repo-name>
 
 Done. Claude handles the rest on first use.
 
