@@ -80,7 +80,7 @@ Write a `<name>-steps.json` file in the **user's current working directory** (no
 
 ### Step 4: Preview steps with user
 
-Before recording, show the user a numbered list of all steps with their notes and timing. Ask if they want to adjust anything. Example:
+Before recording, show the user a numbered list of all steps with their notes and timing. Example:
 
 ```
 1. Open app (navigate to localhost:3000)
@@ -91,7 +91,9 @@ Before recording, show the user a numbered list of all steps with their notes an
 ...
 ```
 
-### Step 5: Run the recording
+### Step 5: Dry run (test recording)
+
+Run a test recording so the user can review before finalizing.
 
 **Always use a Sonnet subagent** — it costs ~80x less than Opus and handles this perfectly.
 
@@ -112,12 +114,14 @@ Agent({
 - `--no-confirm` — skip interactive preview (required for subagent since it can't respond to prompts)
 - `--width` / `--height` — viewport size (pass if non-default)
 
-### Step 6: Review and iterate
+### Step 6: Ask for feedback
 
-After recording:
-- Tell the user where the MP4 is saved
-- Ask if they want to review it
-- If steps need fixing (wrong selector, bad timing, missing interaction), update the steps JSON and re-record
+After the dry run completes, tell the user where the MP4 is saved and ask:
+> "Here's the test recording. Are you happy with it, or do you want to add/change any actions?"
+
+Wait for their response:
+- **If happy** → done, the recording is final
+- **If they want changes** → update the steps JSON, re-record, and ask again
 
 ## Available Actions
 
@@ -132,6 +136,7 @@ After recording:
 | `type` | `selector`, `text` | Click element then type text character by character |
 | `press` | `key` | Press keyboard key (e.g. `Escape`, `Enter`) |
 | `hover` | `selector` | Hover over element |
+| `drag` | `selector`, `toX`, `toY`, `duration` | Smooth drag from element center to target offset (for sliders, drag-and-drop) |
 | `wait` | `seconds` | Pause recording |
 
 Every action supports:

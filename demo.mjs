@@ -42,6 +42,7 @@ function estimateStepMs(step) {
     case "hover": return (step.pauseAfter || 1000) + 500;
     case "type": return (step.text?.length || 10) * 80 + (step.pauseAfter || 1000);
     case "click-toggle": return (step.pauseAfter || 1500) + 1000;
+    case "drag": return (step.duration || 800) + (step.pauseAfter || 1000) + 1000;
     default: return 2000;
   }
 }
@@ -64,6 +65,7 @@ function stepDetail(step) {
     case "type": return `"${(step.text || "").substring(0, 30)}"`;
     case "hover": return step.selector.substring(0, 45);
     case "click-toggle": return step.text;
+    case "drag": return `${step.selector} → (${step.toX}, ${step.toY})`;
     default: return "";
   }
 }
@@ -564,6 +566,42 @@ async function runSteps(page, context) {
         await page.keyboard.press(step.key);
         await page.waitForTimeout(step.pauseAfter || 500);
         break;
+
+      case "drag": {
+        const dragLoc = page.locator(step.selector).first();
+        const dragBox = await ensureInView(page, dragLoc);
+        if (dragBox) {
+          const startX = dragBox.x + (step.fromX ?? dragBox.width / 2);
+          const startY = dragBox.y + (step.fromY ?? dragBox.height / 2);
+          const endX = dragBox.x + step.toX;
+          const endY = dragBox.y + (step.toY ?? dragBox.height / 2);
+          const dragSteps = 30;
+          const dragDuration = step.duration || 800;
+          const interval = dragDuration / dragSteps;
+
+          await moveCursor(page, startX, startY);
+          await page.waitForTimeout(300);
+          await showClick(page, startX, startY);
+          await page.mouse.move(startX, startY);
+          await page.mouse.down();
+          await page.waitForTimeout(100);
+
+          for (let s = 1; s <= dragSteps; s++) {
+            const t = s / dragSteps;
+            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            const cx = startX + (endX - startX) * ease;
+            const cy = startY + (endY - startY) * ease;
+            await page.mouse.move(cx, cy);
+            await moveCursor(page, cx, cy);
+            await page.waitForTimeout(interval);
+          }
+
+          await page.mouse.up();
+          await page.waitForTimeout(200);
+        }
+        await page.waitForTimeout(step.pauseAfter || 1000);
+        break;
+      }
 
       case "scroll-top":
         await page.evaluate(() => {
