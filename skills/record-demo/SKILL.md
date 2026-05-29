@@ -95,12 +95,14 @@ Before recording, show the user a numbered list of all steps with their notes an
 
 **Always use a Sonnet subagent** — it costs ~80x less than Opus and handles this perfectly.
 
+**Always save the output MP4 to the user's Downloads folder:** `~/Downloads/<name>.mp4`
+
 First, resolve the plugin directory and steps file path, then spawn:
 
 ```
 Agent({
   model: "sonnet",
-  prompt: "Run this demo recording. Steps:\n\n1. Find the plugin engine:\nPLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name 'demo.mjs' -path '*record-demo*' -exec dirname {} \\; | head -1)\n\n2. Run the recording:\nnode \"$PLUGIN_DIR/demo.mjs\" --steps /absolute/path/to/<name>-steps.json --output /absolute/path/to/<name>.mp4 --no-setup --no-confirm\n\nIMPORTANT: Use absolute paths for both --steps and --output. Do NOT modify any files. Report success/failure and the output file path.",
+  prompt: "Run this demo recording. Steps:\n\n1. Find the plugin engine:\nPLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name 'demo.mjs' -path '*record-demo*' -exec dirname {} \\; | head -1)\n\n2. Run the recording:\nnode \"$PLUGIN_DIR/demo.mjs\" --steps /absolute/path/to/<name>-steps.json --output ~/Downloads/<name>.mp4 --no-setup --no-confirm\n\nIMPORTANT: Use absolute paths for both --steps and --output. Output MUST go to ~/Downloads/. Do NOT modify any files. Report success/failure and the output file path.",
   description: "Record demo"
 })
 ```
