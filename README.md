@@ -26,11 +26,12 @@ Or invoke the skill directly:
 > `/record-demo`
 
 Claude will:
-1. Ask what to record and clarify the steps
-2. Generate a steps JSON file
-3. Show a preview of all steps for your approval
-4. Record the MP4 (using a cost-efficient Sonnet subagent)
-5. Let you review and iterate if needed
+1. Ask what you want to record
+2. Ask for the URL or HTML file link
+3. Generate a steps JSON file
+4. Show a preview of all steps for your approval
+5. Record the MP4 to your `~/Downloads` folder (using a cost-efficient Sonnet subagent)
+6. Let you review and iterate if needed
 
 ## Recording Pages That Need Login
 
