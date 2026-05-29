@@ -32,14 +32,22 @@ Tell the user what's happening: "Installing the recording engine dependencies �
 
 ## Workflow
 
-### Step 1: Understand what to record
+### Step 1: Ask what to record
 
-Ask the user:
-- **What URL/page?** (local file, localhost dev server, or external URL)
-- **What interactions?** (click buttons, fill forms, scroll, switch tabs, etc.)
-- **How fast?** (default: brisk pacing)
-- **Output filename?** (default: `demo.mp4`)
-- **Viewport size?** (default: 1920x1200 — use 1440x900 for standard demos, 844x390 for mobile/game prototypes)
+First question — ask the user:
+> "What do you want to record?"
+
+Wait for their response. They'll describe the flow (e.g. "the login flow", "claiming rewards in the mailbox", "onboarding walkthrough").
+
+### Step 2: Ask for the URL
+
+Second question — ask the user:
+> "What's the URL or HTML file link to record?"
+
+Wait for their response. This could be:
+- A local file: `file:///Users/you/project/index.html`
+- A dev server: `http://localhost:3000`
+- An external site: `https://example.com`
 
 If recording a localhost URL, confirm the dev server is running first. If it's not, help the user start it.
 
@@ -47,7 +55,7 @@ If recording a page that requires login, tell the user:
 > "The browser needs to be logged in first. I'll open a setup session — log in manually, then close the browser to save the session."
 Then run without `--no-setup` so the user can configure the browser profile.
 
-### Step 2: Generate steps JSON
+### Step 3: Generate steps JSON
 
 Write a `<name>-steps.json` file in the **user's current working directory** (not the plugin directory). Each step is an object:
 
@@ -70,7 +78,7 @@ Write a `<name>-steps.json` file in the **user's current working directory** (no
 4. Text selectors: `text=Submit`
 5. CSS classes: `.btn-primary` (least stable)
 
-### Step 3: Preview steps with user
+### Step 4: Preview steps with user
 
 Before recording, show the user a numbered list of all steps with their notes and timing. Ask if they want to adjust anything. Example:
 
@@ -83,7 +91,7 @@ Before recording, show the user a numbered list of all steps with their notes an
 ...
 ```
 
-### Step 4: Run the recording
+### Step 5: Run the recording
 
 **Always use a Sonnet subagent** — it costs ~80x less than Opus and handles this perfectly.
 
@@ -102,7 +110,7 @@ Agent({
 - `--no-confirm` — skip interactive preview (required for subagent since it can't respond to prompts)
 - `--width` / `--height` — viewport size (pass if non-default)
 
-### Step 5: Review and iterate
+### Step 6: Review and iterate
 
 After recording:
 - Tell the user where the MP4 is saved
