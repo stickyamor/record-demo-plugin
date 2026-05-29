@@ -1,0 +1,104 @@
+Record Demo — Installation Guide
+==================================
+
+Automated browser demo recorder for Claude Code.
+Tell Claude what to record, and it generates a step-by-step
+script, previews it, then captures an MP4 via Playwright.
+
+
+REQUIREMENTS
+------------
+- Claude Code (CLI, desktop app, or IDE extension)
+- Node.js 18+
+
+
+OPTION A: Install via GitHub (Recommended)
+------------------------------------------
+Run this in Claude Code:
+
+  /plugin add stickyamor/record-demo-plugin
+
+Done. Claude handles the rest on first use.
+
+
+OPTION B: Install from ZIP
+---------------------------
+
+1. Unzip this file. You should see:
+
+   record-demo-plugin/
+   ├── skills/record-demo/SKILL.md
+   ├── demo.mjs
+   ├── inspect-page.mjs
+   ├── package.json
+   ├── README.md
+   └── INSTALL.txt
+
+2. Create the skill folder:
+
+   mkdir -p ~/.claude/skills/record-demo
+
+3. Copy the skill file:
+
+   cp skills/record-demo/SKILL.md ~/.claude/skills/record-demo/SKILL.md
+
+4. Create a folder for the recording engine (pick any location):
+
+   mkdir -p ~/record-demo-engine
+   cp demo.mjs inspect-page.mjs package.json ~/record-demo-engine/
+
+5. Install dependencies:
+
+   cd ~/record-demo-engine
+   npm install
+   npx playwright install chromium
+
+6. Open the skill file and update the engine path:
+
+   Open ~/.claude/skills/record-demo/SKILL.md in a text editor.
+
+   Find every line that references the plugin cache path:
+     find ~/.claude/plugins/cache -type f -name "demo.mjs" ...
+
+   Replace with your engine folder:
+     ~/record-demo-engine
+
+   For example, change:
+     PLUGIN_DIR=$(find ~/.claude/plugins/cache -type f -name "demo.mjs" -path "*record-demo*" -exec dirname {} \; | head -1)
+
+   To:
+     PLUGIN_DIR=~/record-demo-engine
+
+7. Restart Claude Code. The /record-demo skill is now available.
+
+
+HOW TO USE
+----------
+Type /record-demo in Claude Code, or just say:
+
+  "Record a demo of my app"
+
+Claude will:
+  1. Ask what you want to record
+  2. Ask for the URL or HTML file link
+  3. Generate a recording script
+  4. Show a preview for your approval
+  5. Record an MP4 to your ~/Downloads folder
+  6. Let you review and re-record if needed
+
+
+TROUBLESHOOTING
+---------------
+"Skill not found"
+  → Make sure SKILL.md is at ~/.claude/skills/record-demo/SKILL.md
+  → Restart Claude Code
+
+"Cannot find demo.mjs"
+  → Check the engine path in SKILL.md matches where you put the files
+
+"Browser not found"
+  → Run: cd ~/record-demo-engine && npx playwright install chromium
+
+Recording hangs or times out
+  → Check the debug screenshot saved next to the output file
+  → Usually a wrong selector — ask Claude to fix and re-record
